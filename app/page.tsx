@@ -12,6 +12,7 @@ import StatsView from './src/components/StatsView';
 import AppForm from './src/components/AppForm';
 import InterviewsCalendar from './src/components/InterviewsCalendar';
 import GoalsView from './src/components/GoalsView';
+import { useRouter } from "next/navigation";
 
 // Available top-level views
 type View = 'table' | 'interviews' | 'companies' | 'stats' | 'goals';
@@ -26,6 +27,7 @@ const TABS: { key: View; label: string }[] = [
 
 export default function Home() {
   const { status } = useSession();
+  const router = useRouter();
   const [apps, setApps] = useState<JobApplication[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
@@ -50,7 +52,7 @@ export default function Home() {
   }
 
   if (status === "unauthenticated") {
-    window.location.href = "/login";
+    router.push("/login");
     return null;
   }
 
