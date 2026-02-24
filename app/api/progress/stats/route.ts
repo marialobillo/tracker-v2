@@ -3,7 +3,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/app/src/db";
 import { dailyProgress } from "@/app/src/db/schema";
-import { gte, lte, desc } from "drizzle-orm";
+import { gte, lte, desc, and } from "drizzle-orm";
 
 export async function GET() {
   const endDate = new Date();
@@ -17,8 +17,7 @@ export async function GET() {
   const recent = await db
     .select()
     .from(dailyProgress)
-    .where(gte(dailyProgress.date, startStr))
-    .where(lte(dailyProgress.date, endStr))
+    .where(and(gte(dailyProgress.date, startStr), lte(dailyProgress.date, endStr)))
     .orderBy(desc(dailyProgress.date));
 
   const daysMet = recent.filter((r) => r.goalMet === 1).length;

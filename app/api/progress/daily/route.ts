@@ -3,7 +3,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/app/src/db";
 import { dailyProgress } from "@/app/src/db/schema";
-import { gte, lte, asc } from "drizzle-orm";
+import { gte, lte, asc, and } from "drizzle-orm";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -19,8 +19,7 @@ export async function GET(request: Request) {
   const rows = await db
     .select()
     .from(dailyProgress)
-    .where(gte(dailyProgress.date, startStr))
-    .where(lte(dailyProgress.date, endStr))
+    .where(and(gte(dailyProgress.date, startStr), lte(dailyProgress.date, endStr)))
     .orderBy(asc(dailyProgress.date));
 
   // Build a map of existing data
