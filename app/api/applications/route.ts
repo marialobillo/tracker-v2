@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/app/src/db";
 import { applications } from "@/app/src/db/schema";
 import { desc } from "drizzle-orm";
+import { updateDailyProgress } from "@/app/src/db/helpers";
 
 export async function GET() {
   const rows = await db
@@ -37,6 +38,10 @@ export async function POST(request: Request) {
       interviews: body.interviews || {},
     })
     .returning();
+
+  if (body.dateApplied) {
+    await updateDailyProgress(body.dateApplied);
+  }
 
   return NextResponse.json(result[0], { status: 201 });
 }
