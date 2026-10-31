@@ -69,4 +69,16 @@ describe("parseSalary: texto de ofertas (inglés)", () => {
     expect(r.period).toBe("hour");
     expect(r.inferred).toBe(false);
   });
+
+  it("-3 sin símbolo (así se guarda en la base de datos) → revisar", () => {
+    const r = parseSalary("-3");
+    expect(r.needsReview).toBe(true);
+    expect(r.annualEur).toBeNull();
+  });
+
+  it("un rango con guion sigue funcionando: 100-140k", () => {
+    const r = parseSalary("100-140k");
+    expect(r.amount).toBe(100000);
+    expect(r.needsReview).toBe(false);
+  });
 });

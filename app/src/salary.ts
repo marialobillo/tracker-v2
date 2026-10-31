@@ -39,8 +39,9 @@ export function parseSalary(text: string): ParsedSalary {
 
   const currency = clean.includes("$") ? "USD" : clean.includes("£") ? "GBP" : "EUR";
 
-  // Valor negativo tipo "€-3": basura, se revisa a mano.
-  if (/[€$£]\s*-\s*\d/.test(clean)) {
+  // Valor negativo al principio, con o sin símbolo ("-3", "€-3"): basura, se revisa a mano.
+  // Solo al principio, para no romper rangos como "100-140k".
+  if (/^[€$£]?\s*-\s*\d/.test(clean)) {
     return { ...EMPTY, currency, needsReview: true };
   }
 
