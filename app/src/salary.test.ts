@@ -1,6 +1,42 @@
 import { describe, it, expect } from "vitest";
 import { parseSalary, salaryToColumns } from "./salary";
 
+
+describe("parseSalary: formatos de LinkedIn", () => {
+  it("100K EUR/yr - 150K EUR/yr", () => {
+    const r = parseSalary("100K EUR/yr - 150K EUR/yr");
+    expect(r.amount).toBe(100000);
+    expect(r.amountMax).toBe(150000);
+    expect(r.currency).toBe("EUR");
+    expect(r.period).toBe("year");
+    expect(r.inferred).toBe(false);
+  });
+
+  it("5,500 EUR/month - 6,450 EUR/month", () => {
+    const r = parseSalary("5,500 EUR/month - 6,450 EUR/month");
+    expect(r.amount).toBe(5500);
+    expect(r.amountMax).toBe(6450);
+    expect(r.period).toBe("month");
+    expect(r.annualEur).toBe(66000);
+  });
+
+  it("$60K/yr - $130K/yr es USD", () => {
+    const r = parseSalary("$60K/yr - $130K/yr");
+    expect(r.currency).toBe("USD");
+    expect(r.amount).toBe(60000);
+  });
+
+  it("la moneda se lee también de la palabra: 70K GBP/yr", () => {
+    expect(parseSalary("70K GBP/yr").currency).toBe("GBP");
+  });
+
+  it("90K EUR/yr - 110K EUR/yr + Bonus, Stock options ignora el resto", () => {
+    const r = parseSalary("90K EUR/yr - 110K EUR/yr + Bonus, Stock options");
+    expect(r.amount).toBe(90000);
+    expect(r.amountMax).toBe(110000);
+  });
+});
+
 describe("parseSalary: texto del tracker (formato español)", () => {
   it("€80.000 → 80000 anual (el punto es de miles)", () => {
     const r = parseSalary("€80.000");
