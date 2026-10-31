@@ -231,4 +231,16 @@ describe("parseLinkedInOffer", () => {
     expect(o.title).toBeNull();
     expect(o.warnings.length).toBeGreaterThan(0);
   });
+
+    it("la descripción termina en 'Set alert for similar jobs'", () => {
+    const o = parseLinkedInOffer(
+      dawn + "Set alert for similar jobs\nSimilar role\nAbout the company\nDawn Technology"
+    );
+    expect(o.description).toBe("We build custom software.\nYou will work with Node.js.");
+  });
+
+  it("si no está ese aviso, termina en 'About the company'", () => {
+    const o = parseLinkedInOffer(dawn + "About the company\nDawn Technology\nGo to your Settings.");
+    expect(o.description).toBe("We build custom software.\nYou will work with Node.js.");
+  });
 });

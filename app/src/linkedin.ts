@@ -45,6 +45,15 @@ const HEADER_LINE =
 
 const APPLICANTS = /^(Over\s)?(\d[\d,]*)\s(applicants?|people clicked apply)/;
 
+// Líneas que marcan el final del texto de la oferta.
+const END_OF_JOB_TEXT = [
+  "Set alert for similar jobs",
+  "About the company",
+  "Show Premium Insights",
+  "Company focus areas",
+  "Hiring & headcount",
+];
+
 export function parseLinkedInOffer(text: string): LinkedInOffer {
   const offer: LinkedInOffer = {
     company: null, title: null, location: null,
@@ -96,8 +105,17 @@ export function parseLinkedInOffer(text: string): LinkedInOffer {
   }
 
   const aboutIdx = lines.indexOf("About the job");
-  if (aboutIdx === -1) offer.warnings.push("No encontré 'About the job'");
-  else offer.description = lines.slice(aboutIdx + 1).join("\n");
+  if (aboutIdx === -1) {
+    offer.warnings.push("No encontré 'About the job'");
+  } else {
+    // Después del texto de la oferta viene la página de LinkedIn (solicitantes,
+    // datos de la empresa, pie de página...). Cortamos en el primer aviso que aparezca.
+    const ends = END_OF_JOB_TEXT
+      .map((marker) => lines.indexOf(marker, aboutIdx + 1))
+      .filter((i) => i !== -1);
+    const endIdx = ends.length > 0 ? Math.min(...ends) : lines.length;
+    offer.description = lines.slice(aboutIdx + 1, endIdx).join("\n");
+  }
 
   return offer;
 }
