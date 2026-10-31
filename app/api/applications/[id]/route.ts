@@ -5,6 +5,7 @@ import { db } from "@/app/src/db";
 import { applications } from "@/app/src/db/schema";
 import { eq } from "drizzle-orm";
 import { updateDailyProgress } from "@/app/src/db/helpers";
+import { salaryToColumns } from "@/app/src/salary";
 
 export async function PUT(
   request: Request,
@@ -33,6 +34,7 @@ export async function PUT(
       jobPostingUrl: body.jobPostingUrl,
       status: body.status,
       salary: body.salary,
+      ...(body.salary !== undefined ? salaryToColumns(body.salary) : {}),
       notes: body.notes,
       rejectionReason: body.rejectionReason,
       interviews: body.interviews,

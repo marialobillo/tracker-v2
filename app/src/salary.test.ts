@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseSalary } from "./salary";
+import { parseSalary, salaryToColumns } from "./salary";
 
 describe("parseSalary: texto del tracker (formato español)", () => {
   it("€80.000 → 80000 anual (el punto es de miles)", () => {
@@ -80,5 +80,34 @@ describe("parseSalary: texto de ofertas (inglés)", () => {
     const r = parseSalary("100-140k");
     expect(r.amount).toBe(100000);
     expect(r.needsReview).toBe(false);
+  });
+});
+describe("salaryToColumns: lo que se guarda en la base de datos", () => {
+  it("texto vacío, nulo o undefined → todo vacío", () => {
+    for (const v of ["", "   ", null, undefined]) {
+      const c = salaryToColumns(v);
+      expect(c.salaryAmount).toBeNull();
+      expect(c.salaryPeriod).toBeNull();
+      expect(c.salaryAnnualEur).toBeNull();
+      expect(c.salaryInferred).toBe(false);
+    }
+  });
+
+  it("4500 → mensual inferido, 54000 al año", () => {
+    const c = salaryToColumns("4500");
+    expect(c.salaryPeriod).toBe("month");
+    expect(c.salaryInferred).toBe(true);
+    expect(c.salaryAnnualEur).toBe(54000);
+  });
+
+  it("€80.000 → anual, no inferido", () => {
+    const c = salaryToColumns("€80.000");
+    expect(c.salaryAmount).toBe(80000);
+    expect(c.salaryPeriod).toBe("year");
+    expect(c.salaryInferred).toBe(false);
+  });
+
+  it("un número que llega como number (no como texto) también funciona", () => {
+    expect(salaryToColumns(80000 as unknown as string).salaryAmount).toBe(80000);
   });
 });

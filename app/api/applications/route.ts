@@ -6,6 +6,7 @@ import { db } from "@/app/src/db";
 import { applications } from "@/app/src/db/schema";
 import { desc } from "drizzle-orm";
 import { updateDailyProgress } from "@/app/src/db/helpers";
+import { salaryToColumns } from "@/app/src/salary";
 
 export async function GET() {
   const rows = await db
@@ -33,6 +34,7 @@ export async function POST(request: Request) {
       jobPostingUrl: body.jobPostingUrl || null,
       status: body.status || "Applied",
       salary: body.salary || null,
+      ...salaryToColumns(body.salary),
       notes: body.notes || null,
       rejectionReason: body.rejectionReason || null,
       interviews: body.interviews || {},

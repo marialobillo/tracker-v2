@@ -1,7 +1,7 @@
 // Database schema - defines all tables for the job tracker
 // Using Drizzle ORM with PostgreSQL (Neon)
 
-import { pgTable, serial, text, integer, json, timestamp, bigint } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, json, timestamp, bigint, doublePrecision, boolean } from "drizzle-orm/pg-core";
 
 // Main table: job applications
 export const applications = pgTable("applications", {
@@ -16,6 +16,12 @@ export const applications = pgTable("applications", {
   jobPostingUrl: text("job_posting_url"),
   status: text("status").default("Applied"),
   salary: text("salary"),
+  salaryAmount: doublePrecision("salary_amount"),
+  salaryAmountMax: doublePrecision("salary_amount_max"),
+  salaryCurrency: text("salary_currency"),
+  salaryPeriod: text("salary_period"),
+  salaryInferred: boolean("salary_inferred").default(false),
+  salaryAnnualEur: integer("salary_annual_eur"),
   notes: text("notes"),
   rejectionReason: text("rejection_reason"),
   interviews: json("interviews").default({}),

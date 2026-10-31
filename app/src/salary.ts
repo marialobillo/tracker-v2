@@ -85,3 +85,30 @@ export function parseSalary(text: string): ParsedSalary {
 
   return { amount, amountMax, currency, period, inferred, annualEur, needsReview };
 }
+
+// Las seis columnas de sueldo que se guardan en la tabla applications.
+// Si no hay sueldo, todo queda vacío (y salaryInferred en false).
+export function salaryToColumns(text: string | null | undefined) {
+  const clean = text == null ? "" : String(text).trim();
+
+  if (clean === "") {
+    return {
+      salaryAmount: null,
+      salaryAmountMax: null,
+      salaryCurrency: null,
+      salaryPeriod: null,
+      salaryInferred: false,
+      salaryAnnualEur: null,
+    };
+  }
+
+  const p = parseSalary(clean);
+  return {
+    salaryAmount: p.amount,
+    salaryAmountMax: p.amountMax,
+    salaryCurrency: p.currency,
+    salaryPeriod: p.period,
+    salaryInferred: p.inferred,
+    salaryAnnualEur: p.annualEur,
+  };
+}
