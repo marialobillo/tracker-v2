@@ -102,7 +102,7 @@ First fill "offer": company, title, location and work_mode (remote, hybrid, onsi
 
 Then list the concrete requirements of the job. For each one:
 - text: the requirement in a few words.
-- skill: if the requirement is about ONE technology, its standard name (e.g. "Kubernetes", not "k8s"; "PostgreSQL", not "Postgres"). If the job lists several technologies, make one requirement per technology. Empty string if it is not a technology.
+- skill: only if the job description NAMES one specific technology in jd_quote. Use its standard name (e.g. "Kubernetes", not "k8s"; "PostgreSQL", not "Postgres"). If the job lists several technologies, make one requirement per technology. Empty string for general concepts ("cloud-native", "distributed systems", "APIs") and for anything not named in jd_quote. Never pick a technology the job does not name.
 - kind: "required" or "preferred" (nice to have, bonus, valued).
 - is_knockout: true only for rules that disqualify regardless of skills: residence or country restrictions, work authorization, required spoken languages, on-site presence. False for technologies and years of experience.
 - jd_quote: copy the exact words from the job description that state it.
@@ -116,8 +116,15 @@ Do not say the candidate has a skill that is not written in the resume.`;
 }
 
 // Para comparar citas: solo letras y números, sin puntuación ni símbolos.
-export const normalize = (s: string) =>
-  s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+export const normalize = (s: string | undefined | null) =>
+  (typeof s === "string" ? s : "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+
+// Una cita solo vale si existe de verdad en el texto. Vacía o ausente = no vale
+// (un texto vacío está "contenido" en cualquier texto, así que habría que rechazarlo aparte).
+const quoteIsIn = (quote: string | undefined | null, normalizedText: string) => {
+  const q = normalize(quote);
+  return q.length > 0 && normalizedText.includes(q);
+};
 
 // Obligatorios pesan 2, deseables 1. yes = 1, partial = 0.5, no = 0.
 // Los "na" y los knock-out no entran en el porcentaje: los knock-out
@@ -147,12 +154,12 @@ export function verify(reqs: Requirement[], jd: string, cv: string) {
   const downgraded: string[] = [];
 
   for (const r of reqs) {
-    if (!jdNorm.includes(normalize(r.jd_quote))) {
+    if (!quoteIsIn(r.jd_quote, jdNorm)) {
       dropped.push(`${r.text} -> "${r.jd_quote}"`);
       continue;
     }
     const needsCvQuote = !r.is_knockout && (r.match === "yes" || r.match === "partial");
-    if (needsCvQuote && !cvNorm.includes(normalize(r.cv_quote))) {
+    if (needsCvQuote && !quoteIsIn(r.cv_quote, cvNorm)) {
       downgraded.push(`${r.text} -> "${r.cv_quote}"`);
       kept.push({ ...r, match: "no" });
       continue;
@@ -194,7 +201,14 @@ async function askModel(jd: string, cv: string, system: string, apiKey: string) 
   const data = await res.json();
   const block = data.content?.find((b: { type: string }) => b.type === "tool_use");
   if (!block) throw new Error("El modelo no devolvió la herramienta");
-  return block.input as { offer: OfferInfo; requirements: Requirement[] };
+  const input = block.input as { offer?: OfferInfo; requirements?: Requirement[] };
+  return {
+    offer: input.offer as OfferInfo,
+    // Descarta lo que no sea un objeto; las citas ausentes las trata verify().
+    requirements: (Array.isArray(input.requirements) ? input.requirements : []).filter(
+      (x) => x && typeof x === "object"
+    ),
+  };
 }
 
 export async function analyzeOffer(
@@ -224,7 +238,7 @@ export async function analyzeOffer(
   );
 
   return {
-    offer: raw[0].offer,
+    offer: raw[0].offer ?? { company: "", title: "", location: "", work_mode: "unknown" },
     results,
     bestResumeId: pickBest(results),
     knockoutFailed: knockouts.length > 0,
@@ -254,4 +268,47 @@ export async function extractCompany(jd: string, apiKey: string): Promise<string
   const data = await res.json();
   const block = data.content?.find((b: { type: string }) => b.type === "tool_use");
   return (block?.input?.company as string) ?? "";
+}
+
+// ---------------------------------------------------------------
+// ¿Conviene aplicar?  PROPUESTA MÍA (no viene de ningún documento):
+// los umbrales son un punto de partida para ajustar con tus resultados reales.
+// ---------------------------------------------------------------
+export const YES_FROM = 70; // % a partir del cual conviene
+export const DOUBT_FROM = 50; // entre este y YES_FROM, dudoso; por debajo, no
+
+export interface Verdict {
+  level: "yes" | "doubt" | "no";
+  reasons: string[];
+}
+
+export function decide(input: {
+  percent: number | null;
+  knockouts: { text: string }[]; // reglas que no cumples (residencia, idioma, presencial...)
+  gaps: string[]; // tecnologías obligatorias que no tienes y que tú marcaste como "gap"
+}): Verdict {
+  const reasons: string[] = [];
+
+  // 1. Un knock-out decide por sí solo, tenga el % que tenga.
+  if (input.knockouts.length > 0) {
+    for (const k of input.knockouts) reasons.push(`No cumples: ${k.text}`);
+    if (input.percent !== null) reasons.push(`Ajuste de habilidades: ${input.percent}%`);
+    return { level: "no", reasons };
+  }
+
+  // 2. Sin requisitos evaluables no hay base para decidir.
+  if (input.percent === null) {
+    return { level: "doubt", reasons: ["No he podido evaluar requisitos: decide tú."] };
+  }
+
+  reasons.push(`Ajuste de habilidades: ${input.percent}%`);
+  let level: Verdict["level"] =
+    input.percent >= YES_FROM ? "yes" : input.percent >= DOUBT_FROM ? "doubt" : "no";
+
+  // 3. Un hueco en algo obligatorio impide el "sí" aunque el % sea alto.
+  if (input.gaps.length > 0) {
+    reasons.push(`Te falta algo obligatorio que tienes como hueco: ${input.gaps.join(", ")}`);
+    if (level === "yes") level = "doubt";
+  }
+  return { level, reasons };
 }

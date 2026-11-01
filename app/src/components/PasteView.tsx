@@ -5,6 +5,7 @@ import { useState } from "react";
 type Req = { text: string; kind: string; is_knockout: boolean; match: string };
 type Result = {
   offerId: number;
+  verdict: { level: "yes" | "doubt" | "no"; reasons: string[] };
   offer: { company: string; title: string; location: string; work_mode: string };
   results: { id: number; name: string; percent: number | null; requirements: Req[]; dropped: string[]; downgraded: string[] }[];
   bestResumeId: number | null;
@@ -25,6 +26,12 @@ export type ApplyPrefill = {
   offerId: number;
   resumeId: number | null;
 };
+
+const VERDICT = {
+  yes: { label: "✅ Conviene aplicar", bg: "#e6f6ea", border: "#2e8b4a" },
+  doubt: { label: "🟡 Dudoso: decide tú", bg: "#fff8e6", border: "#c80" },
+  no: { label: "⛔ No conviene aplicar", bg: "#fdeaea", border: "#c33" },
+} as const;
 
 const ICON: Record<string, string> = { yes: "✅", partial: "🟡", no: "❌", na: "➖" };
 
@@ -124,6 +131,12 @@ export default function PasteView({ onApply }: { onApply: (p: ApplyPrefill) => v
 
       {result && top && (
         <section>
+          <div style={{ background: VERDICT[result.verdict.level].bg, border: `1px solid ${VERDICT[result.verdict.level].border}`, borderRadius: 8, padding: 12, marginBottom: 12 }}>
+            <strong style={{ fontSize: 18 }}>{VERDICT[result.verdict.level].label}</strong>
+            <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+              {result.verdict.reasons.map((r, i) => <li key={i}>{r}</li>)}
+            </ul>
+          </div>
           <h2>{result.offer.company} — {result.offer.title}</h2>
           <p>{result.offer.location} · {result.offer.work_mode}</p>
           {result.knockoutFailed && (
