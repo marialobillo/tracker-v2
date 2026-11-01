@@ -41,6 +41,8 @@ export interface JobApplication {
   notes: string;
   rejectionReason: string;
   interviews: Interviews;
+  offerId?: number | null;
+  resumeId?: number | null;
 }
 
 // Una etapa del pipeline (para el loop de INTERVIEW_STAGES)

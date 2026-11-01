@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findPrevious, type AppRow } from "./previous";
+import { findPrevious, findPreviousByCompany, type AppRow } from "./previous";
 
 const now = new Date("2026-11-01");
 const row = (o: Partial<AppRow>): AppRow => ({
@@ -38,5 +38,29 @@ describe("findPrevious", () => {
   });
   it("sin coincidencias devuelve lista vacía", () => {
     expect(findPrevious("Nothing here", [row({})], now)).toEqual([]);
+  });
+
+  it("devuelve el trozo de texto donde encontró el nombre", () => {
+    const [m] = findPrevious(jd, [row({})], now);
+    expect(m.context.toLowerCase()).toContain("payfit");
+  });
+  it("caso real: una empresa llamada NiCe salta por 'Nice to have' (aviso falso conocido)", () => {
+    const out = findPrevious("Requirements\nNice to have\nDocker", [row({ company: "NiCe" })], now);
+    expect(out).toHaveLength(1);
+    expect(out[0].context).toContain("Nice to have");
+  });
+});
+
+describe("findPreviousByCompany", () => {
+  it("caso real: Gilytics no salta por NiCe ni develop", () => {
+    const rows = [row({ company: "NiCe" }), row({ company: "develop" })];
+    expect(findPreviousByCompany("Gilytics AG", rows, now)).toEqual([]);
+  });
+  it("'Gilytics AG' coincide con 'gilytics' guardado", () => {
+    const [m] = findPreviousByCompany("Gilytics AG", [row({ company: "gilytics" })], now);
+    expect(m.total).toBe(1);
+  });
+  it("empresa vacía no devuelve nada", () => {
+    expect(findPreviousByCompany("", [row({})], now)).toEqual([]);
   });
 });

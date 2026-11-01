@@ -12,12 +12,15 @@ import StatsView from './src/components/StatsView';
 import AppForm from './src/components/AppForm';
 import InterviewsCalendar from './src/components/InterviewsCalendar';
 import GoalsView from './src/components/GoalsView';
+import PasteView from './src/components/PasteView'; // NUEVO
 import { useRouter } from "next/navigation";
+import { emptyApp } from "./src/utils";
 
 // Available top-level views
-type View = 'table' | 'interviews' | 'companies' | 'stats' | 'goals';
+type View = 'paste' | 'table' | 'interviews' | 'companies' | 'stats' | 'goals'; // NUEVO: 'paste'
 
 const TABS: { key: View; label: string }[] = [
+  { key: 'paste', label: '✨ Paste' }, // NUEVO
   { key: 'goals', label: '🎯 Goals' },
   { key: 'table', label: '📊 Applications' },
   { key: 'interviews', label: '📅 Interviews' },
@@ -87,6 +90,23 @@ export default function Home() {
     setFormOpen(true);
   };
 
+    const handleApplyFromOffer = (p: {
+    company: string; position: string; location: string;
+    offerId: number; resumeId: number | null;
+  }) => {
+    setEditingApp({
+      ...emptyApp(),
+      id: Date.now(),
+      dateApplied: new Date().toLocaleDateString('sv-SE'), // YYYY-MM-DD en tu hora local
+      company: p.company,
+      position: p.position,
+      location: p.location,
+      offerId: p.offerId,
+      resumeId: p.resumeId,
+    });
+    setFormOpen(true);
+  };
+
   const handleEdit = (app: JobApplication) => {
     setEditingApp(app);
     setFormOpen(true);
@@ -128,6 +148,7 @@ export default function Home() {
           ))}
         </div>
 
+        {view === 'paste' && <PasteView onApply={handleApplyFromOffer} />}
         {view === 'table' && (
           <TableView apps={apps} onEdit={handleEdit} onDelete={handleDelete} />
         )}

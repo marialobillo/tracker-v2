@@ -4,8 +4,8 @@
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/app/src/db";
 import { applications, resumes, settings, skills, offers, offerRequirements } from "@/app/src/db/schema";
-import { analyzeOffer } from "@/app/src/analyze";
-import { findPrevious } from "@/app/src/previous";
+import { analyzeOffer, extractCompany } from "@/app/src/analyze";
+import { findPrevious, findPreviousByCompany } from "@/app/src/previous";
 
 export async function POST(req: Request) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -25,7 +25,15 @@ export async function POST(req: Request) {
         dateApplied: applications.dateApplied,
       })
       .from(applications);
-    const duplicate = findPrevious(text, rows);
+    // Primero averiguo qué empresa anuncia la oferta y comparo solo ese nombre.
+    // Si la detección falla, busco los nombres en todo el texto (puede dar falsos avisos).
+    let duplicate;
+    try {
+      const company = await extractCompany(text, apiKey);
+      duplicate = company ? findPreviousByCompany(company, rows) : findPrevious(text, rows);
+    } catch {
+      duplicate = findPrevious(text, rows);
+    }
     if (duplicate.length > 0) return Response.json({ duplicate });
   }
 

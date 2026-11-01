@@ -15,16 +15,28 @@ type Result = {
 type Previous = {
   company: string; last3: number; last6: number; last12: number; total: number;
   lastDate: string | null; lastStatus: string | null; lastPosition: string | null;
+  context: string;
+};
+
+export type ApplyPrefill = {
+  company: string;
+  position: string;
+  location: string;
+  offerId: number;
+  resumeId: number | null;
 };
 
 const ICON: Record<string, string> = { yes: "✅", partial: "🟡", no: "❌", na: "➖" };
 
-export default function Pegar() {
+export default function PasteView({ onApply }: { onApply: (p: ApplyPrefill) => void }) {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<Result | null>(null);
   const [previous, setPrevious] = useState<Previous[] | null>(null);
+  const [skipping, setSkipping] = useState(false);
+  const [reason, setReason] = useState("");
+  const [skipped, setSkipped] = useState(false);
 
   async function send(force = false) {
     if (loading || !text.trim()) return;
@@ -32,6 +44,9 @@ export default function Pegar() {
     setError("");
     setResult(null);
     setPrevious(null);
+    setSkipping(false);
+    setSkipped(false);
+    setReason("");
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
@@ -51,6 +66,17 @@ export default function Pegar() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function skip() {
+    if (!result) return;
+    const res = await fetch(`/api/offers/${result.offerId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision: "saltar", discardReason: reason }),
+    });
+    if (res.ok) setSkipped(true);
+    else setError("No se pudo guardar la decisión");
   }
 
   const top = result?.results.reduce((a, b) => ((b.percent ?? -1) > (a.percent ?? -1) ? b : a));
@@ -83,6 +109,12 @@ export default function Pegar() {
               <b>{p.company}</b>: {p.last3} en 3 meses · {p.last6} en 6 · {p.last12} en 12 · {p.total} en total.
               {p.lastDate && ` Última: ${p.lastDate}`}
               {p.lastPosition && ` (${p.lastPosition}`}{p.lastStatus && `, ${p.lastStatus}`}{p.lastPosition && ")"}
+              {p.context && (
+                <>
+                  <br />
+                  <small>Aparece en la oferta: «…{p.context}…»</small>
+                </>
+              )}
             </p>
           ))}
           <button onClick={() => send(true)} disabled={loading}>Analizar igualmente</button>{" "}
@@ -116,6 +148,39 @@ export default function Pegar() {
               </li>
             ))}
           </ul>
+          <div style={{ margin: "12px 0" }}>
+            {skipped ? (
+              <p>Guardada como saltada.</p>
+            ) : skipping ? (
+              <>
+                <input
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && skip()}
+                  placeholder="Motivo (opcional) y Enter"
+                  style={{ padding: 6, width: 280, background: "#fff", color: "#111", border: "1px solid #888", borderRadius: 6 }}
+                />{" "}
+                <button onClick={skip}>Guardar</button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() =>
+                    onApply({
+                      company: result.offer.company,
+                      position: result.offer.title,
+                      location: result.offer.location,
+                      offerId: result.offerId,
+                      resumeId: result.bestResumeId,
+                    })
+                  }
+                >
+                  He aplicado
+                </button>{" "}
+                <button onClick={() => setSkipping(true)}>Saltar</button>
+              </>
+            )}
+          </div>
           {top.dropped.length + top.downgraded.length > 0 && (
             <p style={{ fontSize: 12 }}>
               El código corrigió {top.dropped.length + top.downgraded.length} afirmaciones del modelo sin cita válida.

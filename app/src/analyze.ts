@@ -102,7 +102,7 @@ First fill "offer": company, title, location and work_mode (remote, hybrid, onsi
 
 Then list the concrete requirements of the job. For each one:
 - text: the requirement in a few words.
-- skill: only if the job description NAMES one specific technology in jd_quote. Use its standard name (e.g. "Kubernetes", not "k8s"; "PostgreSQL", not "Postgres"). If the job lists several technologies, make one requirement per technology. Empty string for general concepts ("cloud-native", "distributed systems", "APIs") and for anything not named in jd_quote. Never pick a technology the job does not name.
+- skill: if the requirement is about ONE technology, its standard name (e.g. "Kubernetes", not "k8s"; "PostgreSQL", not "Postgres"). If the job lists several technologies, make one requirement per technology. Empty string if it is not a technology.
 - kind: "required" or "preferred" (nice to have, bonus, valued).
 - is_knockout: true only for rules that disqualify regardless of skills: residence or country restrictions, work authorization, required spoken languages, on-site presence. False for technologies and years of experience.
 - jd_quote: copy the exact words from the job description that state it.
@@ -230,4 +230,28 @@ export async function analyzeOffer(
     knockoutFailed: knockouts.length > 0,
     knockouts,
   };
+}
+
+// Llamada pequeña: solo dice qué empresa anuncia la oferta.
+export async function extractCompany(jd: string, apiKey: string): Promise<string> {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: 100,
+      system: "Return the name of the company that is hiring, as written in the job post. If it is a recruiting agency, return the agency name. Empty string if you cannot tell.",
+      tools: [{
+        name: "report_company",
+        description: "Report the hiring company name.",
+        input_schema: { type: "object", properties: { company: { type: "string" } }, required: ["company"] },
+      }],
+      tool_choice: { type: "tool", name: "report_company" },
+      messages: [{ role: "user", content: jd.slice(0, 6000) }],
+    }),
+  });
+  if (!res.ok) throw new Error(`La API respondió ${res.status}`);
+  const data = await res.json();
+  const block = data.content?.find((b: { type: string }) => b.type === "tool_use");
+  return (block?.input?.company as string) ?? "";
 }

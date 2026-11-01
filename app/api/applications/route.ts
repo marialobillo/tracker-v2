@@ -38,6 +38,8 @@ export async function POST(request: Request) {
       notes: body.notes || null,
       rejectionReason: body.rejectionReason || null,
       interviews: body.interviews || {},
+      offerId: body.offerId || null,
+      resumeId: body.resumeId || null,
     })
     .returning();
 
